@@ -27,6 +27,9 @@ def build():
             tile_buf_dynamic = pto.TileBufType.get([32, 32], f32, vec, [-1, -1], cfg, ctx)
 
             # Demo signature: (base_addr:i64, vrow:i32, vcol:i32) -> ()
+            #
+            # Note: alloc_tile's `addr` is only accepted by the `ptoas` tool when
+            # assembling with `--pto-level=level3`.
             fn_ty = func.FunctionType.get([i64, i32, i32], [])
             with InsertionPoint(m.body):
                 fn = func.FuncOp("alloc_tile_with_addr_demo", fn_ty)
@@ -54,4 +57,3 @@ def build():
 
 if __name__ == "__main__":
     print(build())
-

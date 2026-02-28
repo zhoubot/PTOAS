@@ -109,13 +109,13 @@ static llvm::cl::opt<std::string> ptoTargetArch(
     "pto-arch",
     llvm::cl::desc("Target Ascend architecture for codegen: a3 or a5 (default: a3)"),
     llvm::cl::value_desc("a3|a5"),
-    llvm::cl::init(""));
+    llvm::cl::init("a3"));
 
 static llvm::cl::opt<std::string> ptoBuildLevel(
     "pto-level",
-    llvm::cl::desc("Build level for pass pipeline: level1, level2, or level3 (default: build-time setting)"),
+    llvm::cl::desc("Build level for pass pipeline: level1, level2, or level3 (default: level2)"),
     llvm::cl::value_desc("level1|level2|level3"),
-    llvm::cl::init(""));
+    llvm::cl::init("level2"));
 
 enum class PTOBuildLevel {
   Level1,
@@ -124,13 +124,7 @@ enum class PTOBuildLevel {
 };
 
 static PTOBuildLevel defaultBuildLevel() {
-#if defined(PTOAS_BUILD_LEVEL1)
-  return PTOBuildLevel::Level1;
-#elif defined(PTOAS_BUILD_LEVEL3)
-  return PTOBuildLevel::Level3;
-#else
   return PTOBuildLevel::Level2;
-#endif
 }
 
 static bool parseBuildLevel(llvm::StringRef levelStr, PTOBuildLevel &out) {
@@ -571,12 +565,10 @@ int main(int argc, char **argv) {
   }
 
   PTOBuildLevel effectiveLevel = defaultBuildLevel();
-  if (!ptoBuildLevel.empty()) {
-    if (!parseBuildLevel(ptoBuildLevel, effectiveLevel)) {
-      llvm::errs() << "Error: invalid --pto-level='" << ptoBuildLevel
-                   << "'. Expected 'level1', 'level2', or 'level3'.\n";
-      return 1;
-    }
+  if (!parseBuildLevel(ptoBuildLevel, effectiveLevel)) {
+    llvm::errs() << "Error: invalid --pto-level='" << ptoBuildLevel
+                 << "'. Expected 'level1', 'level2', or 'level3'.\n";
+    return 1;
   }
 
   if (effectiveLevel == PTOBuildLevel::Level3) {
@@ -647,21 +639,17 @@ int main(int argc, char **argv) {
   // pm.addNestedPass<mlir::func::FuncOp>(pto::createPTOVFloopGatherPass());
 
   pm.addPass(createCSEPass());
-  if (ptoTargetArch.empty()) {
+  std::string arch = ptoTargetArch;
+  for (char &c : arch)
+    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  if (arch == "a3") {
     pm.addPass(pto::createEmitPTOManualPass(pto::PTOArch::A3));
+  } else if (arch == "a5") {
+    pm.addPass(pto::createEmitPTOManualPass(pto::PTOArch::A5));
   } else {
-    std::string arch = ptoTargetArch;
-    for (char &c : arch)
-      c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    if (arch == "a3") {
-      pm.addPass(pto::createEmitPTOManualPass(pto::PTOArch::A3));
-    } else if (arch == "a5") {
-      pm.addPass(pto::createEmitPTOManualPass(pto::PTOArch::A5));
-    } else {
-      llvm::errs() << "Error: invalid --pto-arch='" << ptoTargetArch
-                   << "'. Expected 'a3' or 'a5'.\n";
-      return 1;
-    }
+    llvm::errs() << "Error: invalid --pto-arch='" << ptoTargetArch
+                 << "'. Expected 'a3' or 'a5'.\n";
+    return 1;
   }
   pm.addPass(emitc::createFormExpressionsPass());
   pm.addPass(mlir::createCSEPass());

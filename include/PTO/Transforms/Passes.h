@@ -41,7 +41,7 @@ std::unique_ptr<Pass> createLoweringSyncToPipePass();
 
 // Creates a pass for ...
 std::unique_ptr<Pass> createPTOInsertSyncPass();
-// Default arch follows the build-time setting (see PTOAS_TARGET_ARCH in CMake).
+// Default arch is A3 unless overridden by callers.
 std::unique_ptr<Pass> createEmitPTOManualPass();
 // Explicitly select target arch for codegen.
 std::unique_ptr<Pass> createEmitPTOManualPass(PTOArch arch);

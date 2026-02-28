@@ -7051,14 +7051,7 @@ struct EmitPTOManualPass
 
   PTOArch targetArch;
 
-  EmitPTOManualPass()
-#if defined(PTOAS_TARGET_A3)
-      : targetArch(PTOArch::A3)
-#else
-      : targetArch(PTOArch::A5)
-#endif
-  {
-  }
+  EmitPTOManualPass() : targetArch(PTOArch::A3) {}
 
   explicit EmitPTOManualPass(PTOArch arch) : targetArch(arch) {}
 
