@@ -7,9 +7,9 @@
 //===----------------------------------------------------------------------===//
 #include "PTO/Transforms/Passes.h"
 #include "PTO/IR/PTO.h"
-#include "PTO/Transforms/InsertSync/PTOIRTranslator.h"
 #include "PTO/Transforms/InsertSync/SyncCommon.h"
 #include "PTO/Transforms/InsertSync/MemoryDependentAnalyzer.h"
+#include "PTO/Transforms/InsertSync/PTOIRTranslator.h"
 #include "PTO/Transforms/InsertSync/InsertSyncAnalysis.h"
 #include "PTO/Transforms/InsertSync/InsertSyncDebug.h"
 #include "PTO/Transforms/InsertSync/MoveSyncState.h"
