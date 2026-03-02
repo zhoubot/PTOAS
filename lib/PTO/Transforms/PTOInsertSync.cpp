@@ -9,7 +9,7 @@
 #include "PTO/IR/PTO.h"
 #include "PTO/Transforms/SyncCommon.h"
 #include "PTO/Transforms/MemoryDependentAnalyzer.h"
-#include "PTO/Transforms/PTOIRTranslator.h"
+#include "PTO/Transforms/InsertSync/PTOIRTranslator.h"
 #include "PTO/Transforms/BlockSyncAnalysis.h"
 #include "PTO/Transforms/MoveSyncState.h"
 #include "PTO/Transforms/RemoveRedundantSync.h"
