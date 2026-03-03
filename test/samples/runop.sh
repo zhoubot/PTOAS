@@ -268,6 +268,16 @@ process_one_dir() {
       fi
     fi
 
+    # Regression guard: intra-pipe dependencies must be serialized by a
+    # per-pipe barrier (PyPTO expects `bar_v` / `bar_m` behavior).
+    if [[ "$base" == "test_inject_sync_intra_pipe_barrier" ]]; then
+      if ! grep -Fq "pipe_barrier(PIPE_V)" "$cpp"; then
+        echo -e "${A}(${base}.py)\tFAIL\tmissing pipe_barrier(PIPE_V) for intra-pipe dependency"
+        overall=1
+        continue
+      fi
+    fi
+
     # Regression guard for issue #117: vector mask must be reset for each
     # `pto.section.vector` region to avoid cross-kernel state leakage.
     # Use an existing sample (Complex/cv_region.py) that contains a vector section.
