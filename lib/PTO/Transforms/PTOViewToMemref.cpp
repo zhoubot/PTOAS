@@ -1032,7 +1032,8 @@ struct PTOViewToMemrefPass
       // Stage 2.75: Lower SSA tile_buf view ops (pto.treshape / pto.bitcast)
       // ------------------------------------------------------------------
       auto lowerTileBufViewLike = [&](Operation *anchorOp, Value src,
-                                      mlir::pto::TileBufType tbTy) -> Value {
+                                      mlir::pto::TileBufType tbTy,
+                                      StringRef viewSemantics) -> Value {
         Location loc = anchorOp->getLoc();
         IRRewriter rewriter(ctx);
         rewriter.setInsertionPoint(anchorOp);
@@ -1089,6 +1090,9 @@ struct PTOViewToMemrefPass
         auto bindOp = rewriter.create<pto::BindTileOp>(
             loc, targetType, src,
             vRow ? vRow : Value(), vCol ? vCol : Value(), configAttr);
+        if (!viewSemantics.empty())
+          bindOp->setAttr("pto.view_semantics",
+                          rewriter.getStringAttr(viewSemantics));
         return bindOp.getResult();
       };
 
@@ -1103,7 +1107,7 @@ struct PTOViewToMemrefPass
           signalPassFailure();
           return;
         }
-        Value lowered = lowerTileBufViewLike(op, src, tbTy);
+        Value lowered = lowerTileBufViewLike(op, src, tbTy, "treshape");
         if (!lowered)
           return;
         IRRewriter rewriter(ctx);
@@ -1121,7 +1125,7 @@ struct PTOViewToMemrefPass
           signalPassFailure();
           return;
         }
-        Value lowered = lowerTileBufViewLike(op, src, tbTy);
+        Value lowered = lowerTileBufViewLike(op, src, tbTy, "bitcast");
         if (!lowered)
           return;
         IRRewriter rewriter(ctx);

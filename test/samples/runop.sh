@@ -358,6 +358,78 @@ process_one_dir() {
       fi
     fi
 
+    # Regression guard for Issue #207:
+    # SSA `pto.treshape` (lowered into `pto.bind_tile`) must lower to a single
+    # `TRESHAPE(dst, src)` instead of an invalid Tile-to-pointer cast sequence.
+    if [[ "$base" == "reshape" ]]; then
+      if ! grep -Fq "TRESHAPE(" "$cpp"; then
+        echo -e "${A}(${base}.py)	FAIL	missing TRESHAPE() lowering for SSA treshape"
+        overall=1
+        continue
+      fi
+      if grep -Eq "= \(__ubuf__ [^)]+\*\) v[0-9]+;" "$cpp"; then
+        echo -e "${A}(${base}.py)	FAIL	found invalid Tile-to-__ubuf__ pointer cast (issue #207)"
+        overall=1
+        continue
+      fi
+    fi
+
+    if [[ "$base" == "bitcast_dtype_alias" ]]; then
+      if ! grep -Eq "Tile<[^>]*, int32_t," "$cpp"; then
+        echo -e "${A}(${base}.py)	FAIL	missing int32_t Tile declaration for pto.bitcast"
+        overall=1
+        continue
+      fi
+      if [[ $(grep -c "TASSIGN(" "$cpp") -lt 3 ]]; then
+        echo -e "${A}(${base}.py)	FAIL	expected TASSIGN()-based alias lowering for pto.bitcast"
+        overall=1
+        continue
+      fi
+      if [[ $(grep -c "TRESHAPE(" "$cpp") -ne 1 ]]; then
+        echo -e "${A}(${base}.py)	FAIL	pto.bitcast should not lower via TRESHAPE()"
+        overall=1
+        continue
+      fi
+      if ! grep -Eq "(PTOAS__TILE_DATA|\.data\(\))" "$cpp"; then
+        echo -e "${A}(${base}.py)	FAIL	missing tile-address alias lowering for pto.bitcast"
+        overall=1
+        continue
+      fi
+    fi
+
+    # Regression guard for Issue #207 follow-up:
+    # `pto.bitcast` must alias the original tile storage via
+    # `TASSIGN(dst, reinterpret_cast<uint64_t>(src.data()))`.
+    if [[ "$base" == "bitcast_inplace_cvt" ]]; then
+      if ! "$python" - "$cpp" <<'PY'
+import re
+import sys
+
+text = open(sys.argv[1], "r", encoding="utf-8").read()
+ptr_vars = {
+    match.group(1)
+    for match in re.finditer(r"\b(\w+)\s*=\s*\w+\.data\(\);", text)
+}
+addr_vars = {
+    match.group(1)
+    for match in re.finditer(
+        r"\b(\w+)\s*=\s*reinterpret_cast<uint64_t>\((\w+)\);", text
+    )
+    if match.group(2) in ptr_vars
+}
+ok = any(
+    re.search(rf"TASSIGN\([^,]+,\s*{re.escape(addr_var)}\);", text)
+    for addr_var in addr_vars
+)
+sys.exit(0 if ok else 1)
+PY
+      then
+        echo -e "${A}(${base}.py)\tFAIL\tmissing aliasing TASSIGN() lowering for pto.bitcast"
+        overall=1
+        continue
+      fi
+    fi
+
 	    # Regression guard for Issue #190:
 	    # Infer layout for a 2D column-vector view (16 x 1) should prefer DN.
 	    if [[ "$base" == "tensor_view_infer_layout_dn" ]]; then
