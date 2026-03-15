@@ -1,0 +1,12 @@
+--- !FileInfo:
+  filepath: "/home/zhouruoyu/github/PTOAS/include/PTO/IR/PTOOps.td"
+  includes: "/home/zhouruoyu/github/PTOAS/lib/Bindings/Python;/home/zhouruoyu/llvm-project-19/llvm/include;/home/zhouruoyu/llvm-project-19/build-shared/include;/home/zhouruoyu/llvm-project-19/mlir/include;/home/zhouruoyu/llvm-project-19/build-shared/tools/mlir/include;/home/zhouruoyu/github/PTOAS/include;/home/zhouruoyu/github/PTOAS/build-19/include"
+--- !FileInfo:
+  filepath: "/home/zhouruoyu/github/PTOAS/include/PTO/IR/PTOOps.td"
+  includes: "/home/zhouruoyu/github/PTOAS/lib/Bindings/Python;/home/zhouruoyu/llvm-project-19/llvm/include;/home/zhouruoyu/llvm-project-19/build-shared/include;/home/zhouruoyu/llvm-project-19/mlir/include;/home/zhouruoyu/llvm-project-19/build-shared/tools/mlir/include;/home/zhouruoyu/github/PTOAS/include;/home/zhouruoyu/github/PTOAS/build-19/include"
+--- !FileInfo:
+  filepath: "/home/zhouruoyu/github/PTOAS/include/PTO/IR/PTOOps.td"
+  includes: "/home/zhouruoyu/github/PTOAS/lib/Bindings/Python;/home/zhouruoyu/llvm-project-19/llvm/include;/home/zhouruoyu/llvm-project-19/build-shared/include;/home/zhouruoyu/llvm-project-19/mlir/include;/home/zhouruoyu/llvm-project-19/build-shared/tools/mlir/include;/home/zhouruoyu/github/PTOAS/include;/home/zhouruoyu/github/PTOAS/build-19/include"
+--- !FileInfo:
+  filepath: "/home/zhouruoyu/github/PTOAS/include/PTO/IR/PTOOps.td"
+  includes: "/home/zhouruoyu/github/PTOAS/lib/Bindings/Python;/home/zhouruoyu/llvm-project-19/llvm/include;/home/zhouruoyu/llvm-project-19/build-shared/include;/home/zhouruoyu/llvm-project-19/mlir/include;/home/zhouruoyu/llvm-project-19/build-shared/tools/mlir/include;/home/zhouruoyu/github/PTOAS/include;/home/zhouruoyu/github/PTOAS/build-19/include"

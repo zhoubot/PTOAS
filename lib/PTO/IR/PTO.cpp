@@ -448,8 +448,11 @@ ParseResult mlir::pto::MakeTensorViewOp::parse(OpAsmParser &parser,
       parser.parseRSquare())
     return failure();
 
+  // optional comma for backward compatibility with older printed IR
+  (void)parser.parseOptionalComma();
+
   // strides = [ ... ]
-  if (parser.parseComma() || parser.parseKeyword("strides") || parser.parseEqual() ||
+  if (parser.parseKeyword("strides") || parser.parseEqual() ||
       parser.parseLSquare() ||
       parser.parseOperandList(strideOps) ||
       parser.parseRSquare())
@@ -2940,6 +2943,57 @@ mlir::LogicalResult mlir::pto::TRowExpandSubOp::verify() {
     return emitOpError("expects element type to be f16 or f32");
   return mlir::success();
 }
+
+mlir::LogicalResult mlir::pto::TColExpandDivOp::verify() {
+  Type t0 = getSrc0().getType();
+  Type t1 = getSrc1().getType();
+  Type td = getDst().getType();
+  if (!isPTOShapedLike(t0) || !isPTOShapedLike(t1) || !isPTOShapedLike(td))
+    return emitOpError("expects src0/src1/dst to be memref/tensor/tile_buf/tile_view types");
+  Type e0 = getElemTy(t0), e1 = getElemTy(t1), ed = getElemTy(td);
+  if (!e0 || !e1 || !ed)
+    return emitOpError("failed to get element type for operands");
+  if (e0 != e1 || e0 != ed)
+    return emitOpError("expects src0/src1/dst to have the same element type");
+  auto ft = e0.dyn_cast<mlir::FloatType>();
+  if (!ft || (!ft.isF16() && !ft.isF32()))
+    return emitOpError("expects element type to be f16 or f32");
+  return mlir::success();
+}
+
+mlir::LogicalResult mlir::pto::TColExpandMulOp::verify() {
+  Type t0 = getSrc0().getType();
+  Type t1 = getSrc1().getType();
+  Type td = getDst().getType();
+  if (!isPTOShapedLike(t0) || !isPTOShapedLike(t1) || !isPTOShapedLike(td))
+    return emitOpError("expects src0/src1/dst to be memref/tensor/tile_buf/tile_view types");
+  Type e0 = getElemTy(t0), e1 = getElemTy(t1), ed = getElemTy(td);
+  if (!e0 || !e1 || !ed)
+    return emitOpError("failed to get element type for operands");
+  if (e0 != e1 || e0 != ed)
+    return emitOpError("expects src0/src1/dst to have the same element type");
+  auto ft = e0.dyn_cast<mlir::FloatType>();
+  if (!ft || (!ft.isF16() && !ft.isF32()))
+    return emitOpError("expects element type to be f16 or f32");
+  return mlir::success();
+}
+
+mlir::LogicalResult mlir::pto::TColExpandSubOp::verify() {
+  Type t0 = getSrc0().getType();
+  Type t1 = getSrc1().getType();
+  Type td = getDst().getType();
+  if (!isPTOShapedLike(t0) || !isPTOShapedLike(t1) || !isPTOShapedLike(td))
+    return emitOpError("expects src0/src1/dst to be memref/tensor/tile_buf/tile_view types");
+  Type e0 = getElemTy(t0), e1 = getElemTy(t1), ed = getElemTy(td);
+  if (!e0 || !e1 || !ed)
+    return emitOpError("failed to get element type for operands");
+  if (e0 != e1 || e0 != ed)
+    return emitOpError("expects src0/src1/dst to have the same element type");
+  auto ft = e0.dyn_cast<mlir::FloatType>();
+  if (!ft || (!ft.isF16() && !ft.isF32()))
+    return emitOpError("expects element type to be f16 or f32");
+  return mlir::success();
+}
 //===----------------------------------------------------------------------===//
 // PTO.cpp  (add verifier for TROWMAX DPS/tilebuf op)
 //===----------------------------------------------------------------------===//
@@ -4435,6 +4489,9 @@ PTO_DEFINE_UNARY_EFFECTS(TRowExpandOp, getSrcMutable(), getDstMutable())
 PTO_DEFINE_BINARY_EFFECTS(TRowExpandDivOp, getSrc0Mutable(), getSrc1Mutable(), getDstMutable())
 PTO_DEFINE_BINARY_EFFECTS(TRowExpandMulOp, getSrc0Mutable(), getSrc1Mutable(), getDstMutable())
 PTO_DEFINE_BINARY_EFFECTS(TRowExpandSubOp, getSrc0Mutable(), getSrc1Mutable(), getDstMutable())
+PTO_DEFINE_BINARY_EFFECTS(TColExpandDivOp, getSrc0Mutable(), getSrc1Mutable(), getDstMutable())
+PTO_DEFINE_BINARY_EFFECTS(TColExpandMulOp, getSrc0Mutable(), getSrc1Mutable(), getDstMutable())
+PTO_DEFINE_BINARY_EFFECTS(TColExpandSubOp, getSrc0Mutable(), getSrc1Mutable(), getDstMutable())
 
 // Row reductions use tmp scratch tile.
 void TRowMaxOp::getEffects(

@@ -1024,6 +1024,18 @@ struct ArithCmpFToEmitC : public OpConversionPattern<arith::CmpFOp> {
         .getResult();
   }
 
+  static std::pair<Value, Value>
+  getCmpOperands(ConversionPatternRewriter &rewriter, Location loc, Type srcTy,
+                 Value lhs, Value rhs) {
+    auto floatTy = dyn_cast<FloatType>(srcTy);
+    if (!floatTy || !floatTy.isF16())
+      return {lhs, rhs};
+
+    auto f32Ty = emitc::OpaqueType::get(rewriter.getContext(), "float");
+    return {emitCCast(rewriter, loc, f32Ty, lhs),
+            emitCCast(rewriter, loc, f32Ty, rhs)};
+  }
+
   LogicalResult matchAndRewrite(arith::CmpFOp op, OpAdaptor adaptor,
                                 ConversionPatternRewriter &rewriter) const override {
     if (!isa<FloatType>(op.getLhs().getType()))
@@ -1031,6 +1043,8 @@ struct ArithCmpFToEmitC : public OpConversionPattern<arith::CmpFOp> {
 
     auto loc = op.getLoc();
     auto i1Ty = rewriter.getI1Type();
+    auto [lhs, rhs] = getCmpOperands(rewriter, loc, op.getLhs().getType(),
+                                     adaptor.getLhs(), adaptor.getRhs());
 
     bool unordered = false;
     emitc::CmpPredicate pred = emitc::CmpPredicate::eq;
@@ -1072,8 +1086,7 @@ struct ArithCmpFToEmitC : public OpConversionPattern<arith::CmpFOp> {
       break;
     case arith::CmpFPredicate::ORD: {
       Value ordered = rewriter.create<emitc::LogicalAndOp>(
-          loc, i1Ty, isNotNaN(rewriter, loc, adaptor.getLhs()),
-          isNotNaN(rewriter, loc, adaptor.getRhs()));
+          loc, i1Ty, isNotNaN(rewriter, loc, lhs), isNotNaN(rewriter, loc, rhs));
       rewriter.replaceOp(op, ordered);
       return success();
     }
@@ -1103,24 +1116,20 @@ struct ArithCmpFToEmitC : public OpConversionPattern<arith::CmpFOp> {
       break;
     case arith::CmpFPredicate::UNO: {
       Value unord = rewriter.create<emitc::LogicalOrOp>(
-          loc, i1Ty, isNaN(rewriter, loc, adaptor.getLhs()),
-          isNaN(rewriter, loc, adaptor.getRhs()));
+          loc, i1Ty, isNaN(rewriter, loc, lhs), isNaN(rewriter, loc, rhs));
       rewriter.replaceOp(op, unord);
       return success();
     }
     }
 
     Value cmp = rewriter
-                    .create<emitc::CmpOp>(loc, i1Ty, pred, adaptor.getLhs(),
-                                          adaptor.getRhs())
+                    .create<emitc::CmpOp>(loc, i1Ty, pred, lhs, rhs)
                     .getResult();
 
     Value unord = rewriter.create<emitc::LogicalOrOp>(
-        loc, i1Ty, isNaN(rewriter, loc, adaptor.getLhs()),
-        isNaN(rewriter, loc, adaptor.getRhs()));
+        loc, i1Ty, isNaN(rewriter, loc, lhs), isNaN(rewriter, loc, rhs));
     Value ord = rewriter.create<emitc::LogicalAndOp>(
-        loc, i1Ty, isNotNaN(rewriter, loc, adaptor.getLhs()),
-        isNotNaN(rewriter, loc, adaptor.getRhs()));
+        loc, i1Ty, isNotNaN(rewriter, loc, lhs), isNotNaN(rewriter, loc, rhs));
 
     if (unordered) {
       Value res =
@@ -5741,6 +5750,72 @@ struct PTORowExpandSubToEmitC : public OpConversionPattern<pto::TRowExpandSubOp>
   }
 };
 
+struct PTOColExpandDivToEmitC : public OpConversionPattern<pto::TColExpandDivOp> {
+  using OpConversionPattern<pto::TColExpandDivOp>::OpConversionPattern;
+
+  LogicalResult matchAndRewrite(pto::TColExpandDivOp op, OpAdaptor adaptor,
+                                ConversionPatternRewriter &rewriter) const override {
+    auto loc = op.getLoc();
+
+    Value src0 = peelUnrealized(adaptor.getSrc0());
+    Value src1 = peelUnrealized(adaptor.getSrc1());
+    Value dst  = peelUnrealized(adaptor.getDst());
+
+    SmallVector<Value, 3> operands{dst, src0, src1};
+    rewriter.create<emitc::CallOpaqueOp>(
+        loc, TypeRange{}, "TCOLEXPANDDIV",
+        /*args=*/ArrayAttr{}, /*templateArgs=*/ArrayAttr{},
+        /*operands=*/operands);
+
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
+struct PTOColExpandMulToEmitC : public OpConversionPattern<pto::TColExpandMulOp> {
+  using OpConversionPattern<pto::TColExpandMulOp>::OpConversionPattern;
+
+  LogicalResult matchAndRewrite(pto::TColExpandMulOp op, OpAdaptor adaptor,
+                                ConversionPatternRewriter &rewriter) const override {
+    auto loc = op.getLoc();
+
+    Value src0 = peelUnrealized(adaptor.getSrc0());
+    Value src1 = peelUnrealized(adaptor.getSrc1());
+    Value dst  = peelUnrealized(adaptor.getDst());
+
+    SmallVector<Value, 3> operands{dst, src0, src1};
+    rewriter.create<emitc::CallOpaqueOp>(
+        loc, TypeRange{}, "TCOLEXPANDMUL",
+        /*args=*/ArrayAttr{}, /*templateArgs=*/ArrayAttr{},
+        /*operands=*/operands);
+
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
+struct PTOColExpandSubToEmitC : public OpConversionPattern<pto::TColExpandSubOp> {
+  using OpConversionPattern<pto::TColExpandSubOp>::OpConversionPattern;
+
+  LogicalResult matchAndRewrite(pto::TColExpandSubOp op, OpAdaptor adaptor,
+                                ConversionPatternRewriter &rewriter) const override {
+    auto loc = op.getLoc();
+
+    Value src0 = peelUnrealized(adaptor.getSrc0());
+    Value src1 = peelUnrealized(adaptor.getSrc1());
+    Value dst  = peelUnrealized(adaptor.getDst());
+
+    SmallVector<Value, 3> operands{dst, src0, src1};
+    rewriter.create<emitc::CallOpaqueOp>(
+        loc, TypeRange{}, "TCOLEXPANDSUB",
+        /*args=*/ArrayAttr{}, /*templateArgs=*/ArrayAttr{},
+        /*operands=*/operands);
+
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 //===----------------------------------------------------------------------===//
 // PTOConvert.cpp  (add lowering + patterns.add for TROWMAX DPS/memref op)
 //===----------------------------------------------------------------------===//
@@ -6842,9 +6917,17 @@ static bool isTriviallyInlineableExecuteRegion(scf::ExecuteRegionOp op) {
 static bool needsWholeFunctionSCFToCF(func::FuncOp func) {
   bool needs = false;
   func.walk([&](Operation *op) {
-    if (!isa<scf::WhileOp, scf::IndexSwitchOp, scf::ExecuteRegionOp>(op))
+    if (!isa<scf::ForOp, scf::IfOp, scf::WhileOp, scf::IndexSwitchOp,
+             scf::ExecuteRegionOp>(op))
       return WalkResult::advance();
     Operation *parentOp = op->getParentOp();
+
+    // Keep `scf.for` / `scf.if` in structured form inside single-block PTO
+    // section bodies. SCFToEmitC handles these directly, while SCFToCF would
+    // introduce CFG branches that cannot legally live inside `pto.section.*`.
+    if (isa<scf::ForOp, scf::IfOp>(op)) {
+      return WalkResult::advance();
+    }
 
     // `scf.execute_region` can legally appear in single-block parents. Only
     // require whole-function SCFToCF if we need to lower it into CFG blocks
@@ -7285,6 +7368,9 @@ static void populatePTOToEmitCPatterns(RewritePatternSet &patterns,
   patterns.add<PTOSqrtSToEmitC>(typeConverter, ctx);
   patterns.add<PTOTTransToEmitC>(typeConverter, ctx);
   patterns.add<PTOSelSToEmitC>(typeConverter, ctx);
+  patterns.add<PTOColExpandSubToEmitC>(typeConverter, ctx);
+  patterns.add<PTOColExpandMulToEmitC>(typeConverter, ctx);
+  patterns.add<PTOColExpandDivToEmitC>(typeConverter, ctx);
   patterns.add<PTOColMinToEmitC>(typeConverter, ctx);
   patterns.add<PTORowExpandSubToEmitC>(typeConverter, ctx);
   patterns.add<PTOShrSToEmitC>(typeConverter, ctx);
@@ -7607,6 +7693,14 @@ struct EmitPTOManualPass
     // 3. 执行转换
     if (failed(applyPartialConversion(mop, target, std::move(patterns)))) {
       llvm::errs() << "Conversion FAILED! Rolling back executed.\n";
+      mop.walk([&](Operation *op) {
+        if (!target.isLegal(op)) {
+          llvm::errs() << "[IllegalOp] " << op->getName() << " @ " << op->getLoc()
+                       << "\n";
+          op->print(llvm::errs());
+          llvm::errs() << "\n";
+        }
+      });
       return signalPassFailure();
     }
 
@@ -7643,6 +7737,20 @@ struct EmitPTOManualPass
       }
 
       if (inTy == outTy) {
+        output.replaceAllUsesWith(input);
+        castsToErase.push_back(cast);
+        return;
+      }
+
+      if (Type convertedOutTy = typeConverter.convertType(outTy);
+          convertedOutTy && convertedOutTy == inTy) {
+        output.replaceAllUsesWith(input);
+        castsToErase.push_back(cast);
+        return;
+      }
+
+      if (Type convertedInTy = typeConverter.convertType(inTy);
+          convertedInTy && convertedInTy == outTy) {
         output.replaceAllUsesWith(input);
         castsToErase.push_back(cast);
         return;

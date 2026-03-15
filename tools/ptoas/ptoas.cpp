@@ -694,9 +694,13 @@ int main(int argc, char **argv) {
 
   dropEmptyEmitCExpressions(module.get());
 
-  // llvm::outs() << "\n===== EmitC IR (before translateToCpp) =====\n";
-  // module->print(llvm::outs());
-  // llvm::outs() << "\n===== End EmitC IR =====\n";
+  if (const char *dumpEmitC = std::getenv("PTOAS_DUMP_EMITC_IR")) {
+    if (std::string_view(dumpEmitC) == "1") {
+      llvm::outs() << "\n===== EmitC IR (before translateToCpp) =====\n";
+      module->print(llvm::outs());
+      llvm::outs() << "\n===== End EmitC IR =====\n";
+    }
+  }
 
   // Emit C++ to string, then post-process, then write to output file.
   std::string cppOutput;
