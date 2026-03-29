@@ -684,7 +684,10 @@ int main(int argc, char **argv) {
   } else {
     pm.addPass(pto::createEmitPTOManualPass(pto::PTOArch::A5));
   }
-  pm.addPass(emitc::createFormExpressionsPass());
+  const bool enableFormExpressions =
+      std::getenv("PTOAS_ENABLE_FORM_EXPRESSIONS") != nullptr;
+  if (enableFormExpressions)
+    pm.addPass(emitc::createFormExpressionsPass());
   pm.addPass(mlir::createCSEPass());
 
   if (failed(pm.run(*module))) {
@@ -718,6 +721,13 @@ int main(int argc, char **argv) {
   if (failed(emitc::translateToCpp(*module, cppOS,
                                   /*declareVariablesAtTop=*/declareVariablesAtTop))) {
     llvm::errs() << "Error: Failed to emit C++.\n";
+    if (const char *dumpEmitCFailure = std::getenv("PTOAS_DUMP_EMITC_FAILURE_IR")) {
+      if (std::string_view(dumpEmitCFailure) == "1") {
+        llvm::errs() << "===== EmitC IR On Failure =====\n";
+        module->print(llvm::errs());
+        llvm::errs() << "\n===== End EmitC IR On Failure =====\n";
+      }
+    }
     return 1;
   }
   cppOS.flush();

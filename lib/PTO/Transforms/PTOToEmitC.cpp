@@ -3856,6 +3856,24 @@ struct PTOSetValToSETVAL : public OpConversionPattern<pto::TSetValOp> {
     // ---- offset: SSA index operand ----
     Value offset = peelUnrealized(adaptor.getOffset());
 
+    auto isPointerLike = [](Value v) {
+      Type ty = v.getType();
+      if (isa<emitc::PointerType>(ty))
+        return true;
+      if (auto ot = dyn_cast<emitc::OpaqueType>(ty))
+        return ot.getValue().ends_with("*");
+      return false;
+    };
+
+    if (isPointerLike(dst)) {
+      rewriter.create<emitc::CallOpaqueOp>(
+          op.getLoc(), TypeRange{}, "PTOAS__PTR_STORE",
+          ArrayAttr{}, ArrayAttr{}, ValueRange{dst, offset, val});
+
+      rewriter.eraseOp(op);
+      return success();
+    }
+
     // NOTE: EmitC has no direct member-call op today. We emit a marker call
     // and post-process ptoas output to rewrite it into:
     //   dst.SetValue(offset, val);
@@ -3877,12 +3895,34 @@ struct PTOGetValToGETVAL : public OpConversionPattern<pto::TGetValOp> {
     // ---- offset: SSA index operand ----
     Value offset = peelUnrealized(adaptor.getOffset());
 
+    auto isPointerLike = [](Value v) {
+      Type ty = v.getType();
+      if (isa<emitc::PointerType>(ty))
+        return true;
+      if (auto ot = dyn_cast<emitc::OpaqueType>(ty))
+        return ot.getValue().ends_with("*");
+      return false;
+    };
+
     // NOTE: EmitC has no direct member-call op today. We emit a marker call
     // and post-process ptoas output to rewrite it into:
     //   auto x = src.GetValue(offset);
     Type dstTy = getTypeConverter()->convertType(op.getDst().getType());
     if (!dstTy)
       return failure();
+
+    if (isPointerLike(src)) {
+      auto call = rewriter.create<emitc::CallOpaqueOp>(
+          op.getLoc(),
+          TypeRange{dstTy},
+          "PTOAS__PTR_LOAD",
+          ArrayAttr{}, ArrayAttr{},
+          ValueRange{src, offset});
+
+      rewriter.replaceOp(op, call.getResults());
+      return success();
+    }
+
     auto call = rewriter.create<emitc::CallOpaqueOp>(
         op.getLoc(),
         TypeRange{dstTy},
